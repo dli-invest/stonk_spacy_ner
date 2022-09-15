@@ -1,11 +1,12 @@
 import spacy
 import pandas as pd
-from utils import DIVIDEND_LABEL, stop_terms, cse_pattern, tsx_pattern
+from utils import DIVIDEND_LABEL, IGNORE_LABEL, stop_terms, cse_pattern, tsx_pattern
 
 # rewrite this to load based on patternl files.
 # https://spacy.io/usage/rule-based-matching#entityruler-files
 def init_nlp(exchange_data_path: str = "https://raw.githubusercontent.com/dli-invest/fin_news_nlp/main/nlp_articles/core/data/exchanges.tsv", indicies_data_path: str = "https://raw.githubusercontent.com/dli-invest/fin_news_nlp/main/nlp_articles/core/data/indicies.tsv"):
     SPLIT_COMPANY_INTO_WORDS = False
+    BEAR_MARKET_ADJUSTMENT = True
     nlp = spacy.load("en_core_web_sm")
     ticker_df = pd.read_csv(
                 "https://raw.githubusercontent.com/dli-invest/eod_tickers/main/data/us.csv"
@@ -159,6 +160,20 @@ def init_nlp(exchange_data_path: str = "https://raw.githubusercontent.com/dli-in
     patterns.append({
         "label": "COMPANY",
         "pattern": tsx_pattern,
+    })
+
+    # ignore investor conference
+    # can be useful in bull markets, but not in bear markets
+    if BEAR_MARKET_ADJUSTMENT:
+        patterns.append({
+            "label": IGNORE_LABEL,
+            "pattern": [{"LOWER": "investor"}, {"LOWER": "conference"}]
+        })
+
+    # search for MOU
+    patterns.append({
+        "label": "NEWS",
+        "pattern": [{"LOWER": "mou"}]
     })
     ruler.add_patterns(patterns)
     return nlp
