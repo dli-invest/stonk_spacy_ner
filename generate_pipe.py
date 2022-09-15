@@ -1,10 +1,10 @@
 import spacy
 import pandas as pd
-from utils import DIVIDEND_LABEL, stop_terms
+from utils import DIVIDEND_LABEL, stop_terms, cse_pattern, tsx_pattern
 
 # rewrite this to load based on patternl files.
 # https://spacy.io/usage/rule-based-matching#entityruler-files
-def init_nlp_us(exchange_data_path: str = "https://raw.githubusercontent.com/dli-invest/fin_news_nlp/main/nlp_articles/core/data/exchanges.tsv", indicies_data_path: str = "https://raw.githubusercontent.com/dli-invest/fin_news_nlp/main/nlp_articles/core/data/indicies.tsv"):
+def init_nlp(exchange_data_path: str = "https://raw.githubusercontent.com/dli-invest/fin_news_nlp/main/nlp_articles/core/data/exchanges.tsv", indicies_data_path: str = "https://raw.githubusercontent.com/dli-invest/fin_news_nlp/main/nlp_articles/core/data/indicies.tsv"):
     SPLIT_COMPANY_INTO_WORDS = False
     nlp = spacy.load("en_core_web_sm")
     ticker_df = pd.read_csv(
@@ -32,7 +32,8 @@ def init_nlp_us(exchange_data_path: str = "https://raw.githubusercontent.com/dli
     stops = stop_terms
 
     terms_to_add = ["b2b", "venture", "growth"]
-    nlp = spacy.blank("en")
+    # want my cool stuff here
+    # nlp = spacy.blank("en")
     ruler = nlp.add_pipe("entity_ruler")
     patterns = []
 
@@ -94,6 +95,7 @@ def init_nlp_us(exchange_data_path: str = "https://raw.githubusercontent.com/dli
     for e in exchanges:
         patterns.append({"label": "STOCK_EXCHANGE", "pattern": e})
 
+    # could use holmes for this kind of stuff instead, not at the moment tho.
     for crit in ["acquisition", "buyout", "takeover"]:
         pass
          # patterns.append({"label": "CRITICAL", "pattern": crit})
@@ -107,9 +109,6 @@ def init_nlp_us(exchange_data_path: str = "https://raw.githubusercontent.com/dli
 
     for ec in ["ENVIRONMENT", "INTEREST", "RATES", "TAXPAYERS", "TRUMP", "SUPPLY"]:
         patterns.append({"label": "MAYBE", "pattern": ec})
-
-    for earning in ["EARNINGS", "REVENUE", "QUARTER"]:
-        patterns.append({"label": "EARNINGS", "pattern": earning})
     
     DIVIDEND_PATTERNS = [
         {
@@ -131,9 +130,41 @@ def init_nlp_us(exchange_data_path: str = "https://raw.githubusercontent.com/dli
     ]
     for pattern in DIVIDEND_PATTERNS:
         patterns.append(pattern)
+
+    FINANCIAL_REPORTS_LABEL = "EARNINGS"
+    # financial_reports patterns
+    financial_reports = [
+        # takes care of first quarter to fourth quarter
+        # annual earnings
+        {
+            "label": FINANCIAL_REPORTS_LABEL,
+            "pattern":  [{"LEMMA": {"IN": ["first", "second", "third", "fourth"]}}, {"LOWER": "quarter"}],
+        }, 
+        {
+            "label": FINANCIAL_REPORTS_LABEL,
+            "pattern":  [{"LOWER": "annual"}, {"LOWER": {"IN": {"earning", "earnings", "report"}}}],
+        },
+        {
+            "label": FINANCIAL_REPORTS_LABEL,
+            "pattern":  [{"LOWER": "quarterly"}, {"LOWER": {"IN": {"earning", "earnings", "report"}}}],
+        }
+    ]
+
+    # remove terms next time
+
+    patterns.append({
+        "label": "COMPANY",
+        "pattern": cse_pattern,
+    })
+    patterns.append({
+        "label": "COMPANY",
+        "pattern": tsx_pattern,
+    })
     ruler.add_patterns(patterns)
     return nlp
 
 
-nlp = init_nlp_us()
-nlp.to_disk("output/stonk_pipeline")
+# my thoughts being, lets only do us tickers for now, us stonks are more common
+# cad stocks can come later if its important
+new_nlp = init_nlp()
+new_nlp.to_disk("output/stonk_pipeline")

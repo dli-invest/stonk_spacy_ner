@@ -15,5 +15,20 @@ To publish the pipeline
 
 ```
 python generate_pipe.py
-python -m spacy package ./output/stonk_pipeline output --name "stonk_pipeline" --version 0.0.1 -C
+python -m spacy package ./output/stonk_pipeline output --name "stonk_pipeline" --version 0.0.1 -m data/ref_meta.json --build wheel
 ```
+
+To push to huggingspace
+```
+cd ./output/en_stonk_pipeline-0.0.1/dist
+python -m spacy huggingface-hub push en_stonk_pipeline-0.0.1-py3-none-any.whl
+```
+
+Make sure 
+
+```python
+https://github.com/explosion/spacy-huggingface-hub
+
+```
+
+is installed
